@@ -1,15 +1,19 @@
 from pygame import *
 import random
 
-init()
+init()  
 mixer.init()
 mixer.music.load('space.ogg')
 mixer.music.play()
 mixer.music.set_volume(0.3)
 
+bullet_sound = mixer.Sound("fire.ogg")
+bullet_sound.set_volume(1)
 font.init()
 
 font1 = font.SysFont('Impact', 100)
+font2 = font.SysFont('Impact', 30)
+
 game_over_text = font1.render("Game Over!", True, (255, 0, 0))
 
 screen_info = display.Info()
@@ -25,9 +29,9 @@ bg = transform.scale(bg,(WIDTH, HEIGHT))
 bg_y1 = 0
 bg_y2 = -HEIGHT
 
-p_img = image.load('spaceship.png')
-warrior_img = image.load('alien.png')
-
+p_img = image.load('images-removebg-preview.png')
+warrior_img = image.load('h-removebg-preview.png')
+bullet_img = image.load('JSDF-removebg-preview.png')
 all_sprites = sprite.Group()
 
 class NPC(sprite.Sprite):
@@ -44,9 +48,16 @@ class Player(NPC):
     def __init__(self, sprite_img, width, height, x, y):
         super().__init__(sprite_img, width, height, x, y)
         self.hp = 100
-        self.speed = 2
+        self.speed = 5
         self.bg_speed = 2
         self.max_speed = 20
+        self.score = 0 
+
+    def fire(self):
+        new_bullet = Bullet(bullet_img, 10, 30, self.rect.right - 30, self.rect.top )
+        new_bullet2 = Bullet(bullet_img, 10, 30, self.rect.left + 20, self.rect.top )
+        bullet_sound.play()
+
 
     def update(self):
         key_pressed = key.get_pressed()
@@ -70,7 +81,22 @@ class Player(NPC):
         if len(bos_hit):
             self.hp -= 100
 
-     
+bullets = sprite.Group()
+
+class Bullet(NPC):
+    def __init__(self, sprite_img, width, height, x, y):
+        super().__init__(sprite_img, width, height, x, y)
+        self.rect.bottom = y
+        self.damage = 100
+        self.speed = 10
+        bullets.add(self)
+
+    def update(self):
+        self.rect.y -= self.speed
+        if self.rect.bottom < 0:
+            self.kill()
+
+            
 class Bos(NPC):
     def __init__(self, sprite_img, width, height):
         rand_x = random.randint(0, WIDTH - width)
@@ -84,23 +110,10 @@ class Bos(NPC):
         if self.rect.y > HEIGHT:
             self.kill()
 
-    # def get_direction_to_player(self, player_pos):
-    #     dx = player_pos[0] - self.rect.x
-    #     dy = player_pos[1] - self.rect.y
-
-    #     if abs(dx) > abs(dy):
-    #         if dx > 0:
-    #             return 'right'
-    #         else:
-    #             return 'left'
-    #     else:
-    #         if dy > 0:
-    #             return 'down'
-    #         else:
-    #             return 'up'
-            
 
 player = Player(p_img, 100, 80, 300, 300)
+score_aboba_text = font2.render(f"Score: {player.score}", True, (255, 255, 255))
+
 boses = sprite.Group()
 alien1 = Bos(warrior_img, 80, 60)
 
@@ -117,11 +130,13 @@ while run:
         elif e.type == KEYDOWN:
             if e.key == K_ESCAPE:
                 run = False
+            if e.key == K_SPACE:
+                player.fire()
+
     window.blit(bg,(0, bg_y1))
     window.blit(bg,(0, bg_y2))
     bg_y1 += player.bg_speed
     bg_y2 += player.bg_speed
-    
     
     if bg_y1 > HEIGHT:
         bg_y1 = -HEIGHT
@@ -134,7 +149,11 @@ while run:
 
     if not finish:
         all_sprites.update()
-  
+    
+    bullets_collide = sprite.groupcollide(bullets, boses, True, True, sprite.collide_mask)
+    for bullet in bullets_collide:
+        player.score += 10
+        score_aboba_text = font2.render(f"Score: {player.score}", True, (255, 255, 255))
     now = time.get_ticks()
 
     if now - alien_spawn_time > spawn_interval:
@@ -146,5 +165,7 @@ while run:
     if finish:
         window.blit(game_over_text, (WIDTH/2 - game_over_text.get_width()/2, HEIGHT/2 - game_over_text.get_height()/2))
     
+    window.blit(score_aboba_text, (0, 0))
+
     display.update()
     clock.tick(FPS)
